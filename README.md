@@ -1,37 +1,52 @@
-Human and AI Collaboration for Text-to-SQL
+# Human and AI Collaboration for Text-to-SQL 🤖
 
+## 🚀 Quick Start
 
-
-How to run this project.
-
-1.frontend
+### 1. Frontend
+```bash
 npm install
 npm run serve
+```
 
-2.bakcend
-django should be installed for our backend 
+### 2. Backend
+Django is required for the backend:
+```bash
 pip3 install django
-
-then run this backend
-
 python manage.py runserver
+```
 
-3.ChartDB
-See this website for install and run
-https://github.com/chartdb/chartdb
+### 3. ChartDB 📊
+Visit [ChartDB GitHub](https://github.com/chartdb/chartdb) for details
+```bash
 npm install
 npm run dev
+```
 
-4.SQLens
-See this website for install and run
-https://github.com/oslabs-beta/SQLens
-Fork and clone this repository.
-Run npm install to install dependancies.
-Run npm build to ensure any dependancy updates are reflected.
-Run npm start to spin up a server locally, and view your data on localhost:3000
-
-5.DBDesigner
-See this website for install and run
-https://github.com/aliyun/react-visual-modeling
+### 4. SQLens 🔍
+Visit [SQLens GitHub](https://github.com/oslabs-beta/SQLens) for details
+1. Fork and clone this repository
+2. Install dependencies:
+```bash
 npm install
-npm run start
+npm build  # Reflect dependency updates
+npm start  # Server will run on localhost:3000
+```
+
+### 5. DBDesigner 📐
+Visit [React Visual Modeling](https://github.com/aliyun/react-visual-modeling) for details
+```bash
+npm install
+npm run start  # Server will run on localhost:8888
+```
+
+## 🌟 Features
+- Text-to-SQL conversion
+- Database visualization
+- Interactive query building
+- Real-time collaboration
+- AI-powered suggestions
+
+## 🛠️ Tech Stack
+- Frontend: Vue.js
+- Backend: Django
+- Database Tools: ChartDB, SQLens, DBDesigner
