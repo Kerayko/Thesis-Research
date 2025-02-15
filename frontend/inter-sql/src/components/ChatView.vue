@@ -23,7 +23,7 @@
             type="text" 
             v-model="message" 
             @input="handleInput"
-            @keydown.enter.prevent="sendMessage"
+            @keydown.enter.prevent="handleEnter"
             placeholder="请输入您的问题..."
             class="main-input"
           >
@@ -37,7 +37,7 @@
         </button>
       </div>
     </div>
-    <div class="recommend-section">
+    <div class="recommend-section glass-effect">
       <RecommendView 
         ref="recommendView"
         @select-recommendation="onSelectRecommendation" 
@@ -120,73 +120,66 @@ export default {
       this.suggestion = '';
       this.handleInput();
     },
-    handleInput() {
-      if (this.inputTimer) {
-        clearTimeout(this.inputTimer)
-      }
-      this.inputTimer = setTimeout(() => {
-        this.sendInputToBackend()
-      }, 300)
-    },
-    async sendInputToBackend() {
-      if (!this.message.trim()) {
-        this.suggestion = ''
-        this.$refs.recommendView.fetchRecommendations()
-        return
-      }
-
-      try {
-        // 获取实时补全建议
-        const completionResponse = await fetch('http://localhost:8000/api/realtime-completion/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: this.message
-          })
-        })
-
-        if (!completionResponse.ok) {
-          throw new Error('获取补全建议失败')
-        }
-
-        const completionData = await completionResponse.json()
-        this.suggestion = completionData.suggestion || ''
-
-        // 获取推荐列表
-        const response = await fetch('http://localhost:8000/api/process-input/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: this.message
-          })
-        })
-
-        if (!response.ok) {
-          throw new Error('请求失败')
-        }
-
-        const data = await response.json()
-        console.log('后端响应:', data)
-        
-        // 更新推荐列表
-        if (data.recommendations) {
-          this.$refs.recommendView.updateRecommendations(data.recommendations)
-        }
-      } catch (error) {
-        console.error('发送输入到后端失败:', error)
-        this.suggestion = ''
-      }
-    },
     handleEnter() {
       if (this.suggestion) {
-        this.message = this.message + this.suggestion
-        this.suggestion = ''
-        this.handleInput()
+        this.message = this.message + this.suggestion;
+        this.suggestion = '';
+      } else {
+        this.sendMessage();
       }
+    },
+    handleInput() {
+      if (this.inputTimer) {
+        clearTimeout(this.inputTimer);
+      }
+      
+      this.inputTimer = setTimeout(async () => {
+        try {
+          // 获取实时补全建议
+          const completionResponse = await fetch('http://localhost:8000/api/realtime-completion/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              input: this.message
+            })
+          });
+
+          if (!completionResponse.ok) {
+            throw new Error('获取补全建议失败');
+          }
+
+          const completionData = await completionResponse.json();
+          this.suggestion = completionData.suggestion || '';
+
+          // 获取推荐列表
+          const response = await fetch('http://localhost:8000/api/process-input/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              input: this.message
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('请求失败');
+          }
+
+          const data = await response.json();
+          console.log('后端响应:', data);
+          
+          // 更新推荐列表
+          if (data.recommendations) {
+            this.$refs.recommendView.updateRecommendations(data.recommendations);
+          }
+        } catch (error) {
+          console.error('发送输入到后端失败:', error);
+          this.suggestion = '';
+        }
+      }, 300);
     },
     formatMessage(message) {
       // 将换行符转换为 HTML 的 <br> 标签
@@ -206,6 +199,7 @@ export default {
   display: flex;
   gap: 20px;
   padding: 1rem;
+  height: calc(100vh - 120px);  /* 减去导航栏和padding的高度 */
 }
 
 .chat-main {
@@ -213,6 +207,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;  /* 防止内容溢出 */
 }
 
 .glass-effect {
@@ -224,10 +219,11 @@ export default {
 
 .chat-messages {
   flex: 1;
-  min-height: 400px;
+  min-height: 0;  /* 允许内容收缩 */
   border-radius: 16px;
   padding: 1.5rem;
   transition: all 0.3s ease;
+  overflow-y: auto;
 }
 
 .chat-messages:hover {
@@ -318,15 +314,23 @@ export default {
 
 .recommend-section {
   width: 300px;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;  /* 使用全部可用高度 */
+  overflow-y: auto;  /* 内容过多时可滚动 */
 }
 
 @media (max-width: 768px) {
   .chat-container {
     flex-direction: column;
+    height: auto;
   }
   
   .recommend-section {
     width: 100%;
+    height: 300px;  /* 在移动设备上固定高度 */
   }
   
   .chat-messages {

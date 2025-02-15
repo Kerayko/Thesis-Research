@@ -6,6 +6,192 @@ from .models import Recommendation
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import random
+import mysql.connector
+import os
+
+# MySQL 连接配置
+MYSQL_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'guozhihan123',
+    'database': 'test_db',
+    'raise_on_warnings': True,
+    'auth_plugin': 'mysql_native_password',
+    'port': 3308,
+    'connect_timeout': 10,  # 添加连接超时
+    'allow_local_infile': True,
+    'charset': 'utf8mb4',
+    'use_pure': True  # 使用纯 Python 实现
+}
+
+def connect_mysql():
+    """
+    连接 MySQL 数据库
+    """
+    try:
+        print("尝试连接 MySQL...")
+        # 先尝试不指定数据库连接
+        temp_config = MYSQL_CONFIG.copy()
+        del temp_config['database']
+        
+        connection = mysql.connector.connect(**temp_config)
+        print("基础连接成功，尝试选择数据库...")
+        
+        cursor = connection.cursor()
+        
+        # 先检查数据库是否存在
+        cursor.execute("SHOW DATABASES")
+        databases = [db[0] for db in cursor.fetchall()]
+        
+        if 'test_db' not in databases:
+            print("数据库不存在，创建新数据库...")
+            cursor.execute("CREATE DATABASE test_db")
+            print("数据库创建成功")
+        
+        # 使用数据库
+        cursor.execute("USE test_db")
+        cursor.close()
+        
+        print("MySQL 连接和数据库选择成功！")
+        return connection
+        
+    except mysql.connector.Error as err:
+        if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+            print("用户名或密码错误")
+            print(f"当前配置: user={MYSQL_CONFIG['user']}, password={'*' * len(MYSQL_CONFIG['password'])}")
+        elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+            print("数据库不存在")
+        else:
+            print(f"MySQL 连接错误: {err}")
+            print(f"错误代码: {err.errno}")
+        return None
+    except Exception as e:
+        print(f"发生未知错误: {type(e).__name__} - {str(e)}")
+        return None
+
+@api_view(['POST'])
+@csrf_exempt
+def mysql_operations(request):
+    """
+    处理 MySQL 相关操作的 API 接口
+    """
+    if request.method == 'POST':
+        try:
+            operation = request.data.get('operation')
+            print(f"收到操作请求: {operation}")
+            
+            if operation == 'test_connection':
+                # 测试数据库连接
+                conn = connect_mysql()
+                if conn:
+                    conn.close()
+                    return Response({
+                        'status': 'success',
+                        'message': '数据库连接成功'
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': '数据库连接失败，请检查配置'
+                    }, status=500)
+            
+            elif operation == 'get_databases':
+                conn = connect_mysql()
+                if not conn:
+                    return Response({
+                        'status': 'error',
+                        'message': '数据库连接失败'
+                    }, status=500)
+                
+                cursor = conn.cursor()
+                cursor.execute("SHOW DATABASES")
+                databases = [db[0] for db in cursor.fetchall()]
+                cursor.close()
+                conn.close()
+                
+                return Response({
+                    'status': 'success',
+                    'databases': databases
+                })
+                
+            elif operation == 'get_tables':
+                database = request.data.get('database')
+                if not database:
+                    return Response({
+                        'status': 'error',
+                        'message': '未指定数据库'
+                    }, status=400)
+                
+                conn = connect_mysql()
+                if not conn:
+                    return Response({
+                        'status': 'error',
+                        'message': '数据库连接失败'
+                    }, status=500)
+                
+                cursor = conn.cursor()
+                cursor.execute(f"USE {database}")
+                cursor.execute("SHOW TABLES")
+                tables = [table[0] for table in cursor.fetchall()]
+                cursor.close()
+                conn.close()
+                
+                return Response({
+                    'status': 'success',
+                    'tables': tables
+                })
+                
+            elif operation == 'get_table_data':
+                database = request.data.get('database')
+                table = request.data.get('table')
+                if not database or not table:
+                    return Response({
+                        'status': 'error',
+                        'message': '未指定数据库或表'
+                    }, status=400)
+                
+                conn = connect_mysql()
+                if not conn:
+                    return Response({
+                        'status': 'error',
+                        'message': '数据库连接失败'
+                    }, status=500)
+                
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(f"USE {database}")
+                cursor.execute(f"SELECT * FROM {table} LIMIT 100")
+                rows = cursor.fetchall()
+                
+                # 获取列名
+                cursor.execute(f"SHOW COLUMNS FROM {table}")
+                columns = [column['Field'] for column in cursor.fetchall()]
+                
+                cursor.close()
+                conn.close()
+                
+                return Response({
+                    'status': 'success',
+                    'columns': columns,
+                    'rows': rows
+                })
+            
+            else:
+                return Response({
+                    'status': 'error',
+                    'message': '不支持的操作类型'
+                }, status=400)
+                
+        except Exception as e:
+            print(f"操作出错: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': f'操作失败: {str(e)}'
+            }, status=500)
+    
+    return Response({
+        'status': 'error',
+        'message': '仅支持 POST 请求'
+    }, status=405)
 
 def get_completion_suggestion(input_text):
     """

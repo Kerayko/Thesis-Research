@@ -37,8 +37,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'LLMreco',
+    'rest_framework',
     'corsheaders',
+    'LLMreco',
 ]
 
 MIDDLEWARE = [
@@ -127,3 +128,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # 允许跨域请求
 CORS_ALLOW_ALL_ORIGINS = True  # 开发环境下使用，生产环境建议设置具体域名
+CORS_ALLOW_CREDENTIALS = True
+
+# 添加 REST_FRAMEWORK 设置
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}

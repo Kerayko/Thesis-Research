@@ -16,11 +16,15 @@
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
     "vuex": "^4.0.0",
-    "html2canvas": "^1.4.1"
+    "html2canvas": "^1.4.1",
+    "@babel/runtime": "^7.12.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.0",
     "@babel/eslint-parser": "^7.12.16",
+    "@babel/plugin-proposal-class-properties": "^7.12.0",
+    "@babel/plugin-transform-runtime": "^7.12.0",
+    "@babel/preset-env": "^7.12.0",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
@@ -30,8 +34,7 @@
     "eslint-plugin-vue": "^8.0.3",
     "less": "^4.0.0",
     "less-loader": "^8.0.0",
-    "lint-staged": "^11.1.2",
-    "@babel/preset-env": "^7.12.0"
+    "lint-staged": "^11.1.2"
   },
   "eslintConfig": {
     "root": true,
@@ -43,7 +46,8 @@
       "eslint:recommended"
     ],
     "parserOptions": {
-      "parser": "@babel/eslint-parser"
+      "parser": "@babel/eslint-parser",
+      "requireConfigFile": false
     },
     "rules": {}
   },

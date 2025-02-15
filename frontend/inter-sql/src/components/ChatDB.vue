@@ -1,15 +1,25 @@
 <template>
   <div class="chatdb-container">
-    <!-- 左侧数据库图标 -->
-    <div class="db-icon-section">
-      <div class="image-container">
-        <img :src="currentDbImage" :alt="selectedDB || 'Database ER Diagram'" class="db-icon">
-        <!-- 添加点击放大功能 -->
-        <div class="image-overlay" @click="showFullImage = true">
-          <span>点击查看大图</span>
+    <!-- 上部分布局调整 -->
+    <div class="top-section">
+      <!-- 左侧状态显示 -->
+      <div class="status-section">
+        <div class="connection-status" :class="{ connected: isConnected }">
+          数据库状态: {{ isConnected ? '已连接' : '未连接' }}
         </div>
       </div>
-      <p class="db-name">{{ selectedDB || '请选择数据库' }}</p>
+
+      <!-- 右侧数据库图标 -->
+      <div class="db-icon-section">
+        <div class="image-container">
+          <img :src="currentDbImage" :alt="selectedDB || 'Database ER Diagram'" class="db-icon">
+          <!-- 添加点击放大功能 -->
+          <div class="image-overlay" @click="showFullImage = true">
+            <span>点击查看大图</span>
+          </div>
+        </div>
+        <p class="db-name">{{ selectedDB || '请选择数据库' }}</p>
+      </div>
     </div>
 
     <!-- 图片全屏显示弹窗 -->
@@ -22,6 +32,7 @@
 
     <!-- 中间操作区域 -->
     <div class="db-control-section">
+      <!-- 数据库操作 -->
       <div class="select-group">
         <label>选择数据库：</label>
         <select v-model="selectedDB" @change="loadTables">
@@ -68,20 +79,18 @@ export default {
   name: 'ChatDB',
   data() {
     return {
-      showFullImage: false,  // 添加控制图片全屏显示的状态
-      databases: ['MySQL_Demo', 'PostgreSQL_Test', 'SQLite_Sample'],
+      showFullImage: false,
+      isConnected: false,
+      databases: [],
       dbData: null,
       loading: true,
       error: null,
       selectedDB: '',
-      // 添加数据库图片映射
+      // 修改数据库图片映射
       dbImages: {
-        'MySQL_Demo': require('@/assets/xixi.png'),
-        'PostgreSQL_Test': require('@/assets/xixi.png'),
-        'SQLite_Sample': require('@/assets/xixi.png'),
-        'default': require('@/assets/123.png')
+        'default': require('@/assets/123.png')  // 只保留默认图片
       },
-      tables: {},
+      tables: [],
       relationships: [],
       selectedTable: '',
       tableData: [],
@@ -89,59 +98,130 @@ export default {
     }
   },
   computed: {
-    // 计算当前应该显示的图片
+    // 修改图片计算逻辑
     currentDbImage() {
-      return this.selectedDB ? this.dbImages[this.selectedDB] : this.dbImages.default
+      // 如果选择了数据库，返回 xixi.png，否则返回默认图片
+      return this.selectedDB ? require('@/assets/xixi.png') : this.dbImages.default
     }
   },
   async created() {
-    try {
-      const response = await fetch('http://localhost:8000/api/db-structure/')
-      if (!response.ok) {
-        throw new Error('获取数据库结构失败')
+    await this.testConnection();
+    if (this.isConnected) {
+      try {
+        const response = await fetch('http://localhost:8000/api/mysql/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: 'get_databases'
+          })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          this.databases = data.databases;
+        }
+      } catch (error) {
+        console.error('获取数据库列表失败:', error);
       }
-      const result = await response.json()
-      if (result.status === 'success') {
-        this.dbData = result.data
-      } else {
-        throw new Error(result.message || '获取数据失败')
-      }
-    } catch (error) {
-      console.error('获取数据库结构错误:', error)
-      this.error = error.message
-    } finally {
-      this.loading = false
     }
   },
   methods: {
-    loadTables() {
-      if (!this.selectedDB || !this.dbData) {
-        this.tables = []
-        this.selectedTable = ''
-        return
+    async testConnection() {
+      try {
+        console.log("测试数据库连接...");
+        const response = await fetch('http://localhost:8000/api/mysql/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: 'test_connection'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("连接测试结果:", data);
+        this.isConnected = data.status === 'success';
+        
+        if (this.isConnected) {
+          console.log("数据库连接成功");
+        } else {
+          const errorMsg = data.message || '未知错误';
+          console.error('数据库连接失败:', errorMsg);
+          alert(`数据库连接失败: ${errorMsg}\n请检查数据库配置和服务状态`);
+        }
+      } catch (error) {
+        console.error('连接测试失败:', error);
+        this.isConnected = false;
+        alert(`数据库连接测试失败: ${error.message}\n请检查后端服务是否正常运行`);
       }
-      
-      const dbTables = this.dbData[this.selectedDB]?.tables || {}
-      this.tables = Object.keys(dbTables)
-      this.selectedTable = ''
-      this.tableData = []
-      this.tableColumns = []
+    },
+
+    async loadTables() {
+      if (!this.selectedDB) {
+        this.tables = [];
+        this.selectedTable = '';
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:8000/api/mysql/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: 'get_tables',
+            database: this.selectedDB
+          })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          this.tables = data.tables;
+        } else {
+          console.error('加载表失败:', data.message);
+        }
+      } catch (error) {
+        console.error('加载表错误:', error);
+      }
     },
     
-    loadTableData() {
-      if (!this.selectedDB || !this.selectedTable || !this.dbData) {
-        this.tableData = []
-        this.tableColumns = []
-        return
+    async loadTableData() {
+      if (!this.selectedDB || !this.selectedTable) {
+        this.tableData = [];
+        this.tableColumns = [];
+        return;
       }
-      
-      const tableInfo = this.dbData[this.selectedDB]?.tables[this.selectedTable]
-      if (tableInfo) {
-        this.tableColumns = tableInfo.columns
-        this.tableData = tableInfo.rows
-      } else {
-        this.tableColumns = []
-        this.tableData = []
+
+      try {
+        const response = await fetch('http://localhost:8000/api/mysql/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: 'get_table_data',
+            database: this.selectedDB,
+            table: this.selectedTable
+          })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          this.tableColumns = data.columns;
+          this.tableData = data.rows;
+        } else {
+          console.error('加载数据失败:', data.message);
+        }
+      } catch (error) {
+        console.error('加载数据错误:', error);
       }
     }
   }
@@ -160,13 +240,26 @@ export default {
   border-radius: 12px;
 }
 
-/* 上部分 - 数据库图标 */
-.db-icon-section {
+/* 上部分布局调整 */
+.top-section {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 20px;
   padding: 10px;
+}
+
+.status-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.db-icon-section {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .image-container {
@@ -369,9 +462,16 @@ th {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .db-control-section {
+  .top-section {
     flex-direction: column;
-    gap: 20px;
+  }
+  
+  .status-section {
+    width: 100%;
+  }
+  
+  .connection-status {
+    width: 100%;
   }
   
   .select-group {
@@ -382,5 +482,29 @@ th {
     width: 180px;
     height: 180px;
   }
+}
+
+/* 新增和修改的样式 */
+.connection-status {
+  width: 200px;
+  padding: 15px;
+  border-radius: 8px;
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  text-align: center;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.connection-status.connected {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4CAF50;
+}
+
+/* 删除上传相关样式 */
+.upload-section,
+.upload-btn,
+.upload-btn:hover {
+  display: none;
 }
 </style> 

@@ -7,4 +7,5 @@ urlpatterns = [
     path('realtime-completion/', views.get_realtime_completion, name='realtime-completion'),
     path('chat/', views.chat_response, name='chat_response'),
     path('db-structure/', views.get_db_structure, name='get-db-structure'),
+    path('mysql/', views.mysql_operations, name='mysql-operations'),
 ] 
